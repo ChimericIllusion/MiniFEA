@@ -1,6 +1,6 @@
 # render2d.py
 from vispy import scene, app
-from visualiser.colour_maps import get_colormap, available_maps
+from visualiser_dep.colour_maps import get_colormap, available_maps
 import numpy as np
 
 class TrussViewer(scene.SceneCanvas):
@@ -106,8 +106,8 @@ class TrussViewer(scene.SceneCanvas):
 
 if __name__ == '__main__':
     import numpy as _np
-    from visualiser.mesh_adapter import VisualData
-    from visualiser.viewer_app import launch_viewer
+    from visualiser_dep.mesh_adapter import VisualData
+    from visualiser_dep.viewer_app import launch_viewer
 
     # example usage
     nodes       = _np.array([[0,0],[1,1],[2,0]])
