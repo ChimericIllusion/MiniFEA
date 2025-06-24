@@ -16,7 +16,7 @@ data = VisualData(nodes, elements, displacements, scalar_field, bc_flags)
 
 # ——— Pick your colormap ———
 print("Available colormaps:", available_maps())
-cmap = 'viridis'   # ← change this to any name from the list above
+cmap = 'plasma'   # ← change this to any name from the list above
 
 # ——— Launch! ———
 launch_viewer(data, scale=10.0, cmap=cmap)

@@ -1,7 +1,7 @@
 # visualiser/viewer_app.py
 from vispy import app
 from .render2d import TrussViewer
-from visualiser.visualiser23
+from visualiser.visualiser23 import Visualiser23
 
 # visualiser/viewer_app.py
 
