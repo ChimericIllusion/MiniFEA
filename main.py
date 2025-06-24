@@ -1,9 +1,9 @@
 # main.py
 import numpy as np
 
-from visualiser.mesh_adapter import VisualData
-from visualiser.viewer_app import launch_viewer
-from visualiser.colour_maps import available_maps
+from visualiser_dep.mesh_adapter import VisualData
+from visualiser_dep.viewer_app import launch_viewer
+from visualiser_dep.colour_maps import available_maps
 
 # ——— Your FEA data ———
 nodes         = np.array([[0, 0], [1, 1], [2, 0]])
