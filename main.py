@@ -141,6 +141,7 @@ def main():
         title="MiniFEA Truss Viewer"
     )
     renderer.start()
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

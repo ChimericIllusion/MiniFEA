@@ -4,6 +4,8 @@ input_controller.py
 Maps keyboard and mouse events to camera, view manager, scene, and shader actions.
 """
 import numpy as np
+from OpenGL.GLUT import glutLeaveMainLoop
+import sys
 class InputController:
     """
     Handles user input and dispatches to renderer components.
@@ -17,57 +19,51 @@ class InputController:
                  key_map=None,
                  fit_center=None,
                  fit_radius=None):
-        """
-        Args:
-            camera: Camera instance (orbit/pan/zoom/reset).
-            view_manager: ViewManager instance (goTo presets).
-            scene: Scene instance (toggle_deformed_visibility).
-            shader: ShaderManager instance (cycle_colormap).
-            exit_callback: optional callable to invoke on exit (Esc).
-            key_map: dict mapping key strings to view names, e.g. {'1':'Top', ...}.
-        """
         self.camera      = camera
         self.views       = view_manager
         self.scene       = scene
         self.shader      = shader
         self.exit        = exit_callback or (lambda: None)
-        # default keys for view presets
-        self.key_map     = key_map or {'1':'Top', '2':'Front', '3':'Side', '4':'Iso'}
-        self.fit_center = fit_center
-        self.fit_radius = fit_radius
+        self.key_map     = key_map or {'1': 'Top', '2': 'Front', '3': 'Side', '4': 'Iso'}
+        self.fit_center  = fit_center
+        self.fit_radius  = fit_radius
 
-    def on_key(self, key, modifiers=None):
-        """
-        Call in response to a key press.
+    def on_key(self, key, x=None, y=None):
+        # Normalize key to str
+        k = key.decode('utf-8') if isinstance(key, bytes) else key
 
-        Args:
-            key (str): the key identifier (e.g. '1','r','D','Escape').
-            modifiers: optional set of modifier keys.
-        """
-        k = key.decode('utf-8')
-        # handle Escape key
-        if k == '\x1b' or k.lower() == 'escape':
-            return self.exit()
+        # Exit on Escape
+        if k == '\x1b':
+            # tell GLUT to exit its main loop
+            glutLeaveMainLoop()
+            return
+
+        # Snap to view presets
         if k in self.key_map:
-            # switch to named view
-            name = self.key_map[k]
-            self.views.goTo(name)
-            self.camera.fit(self.fit_center, self.fit_radius)
-        elif k == 'r':
-            # reset camera orientation
+            preset = self.key_map[k]
+            self.views.goTo(preset)
+            # Re-fit to frame the entire model
+            if self.fit_center is not None and self.fit_radius is not None:
+                self.camera.fit(self.fit_center, self.fit_radius)
+            return
+
+        # Reset camera
+        if k.lower() == 'r':
             self.camera.reset()
-            # recenter on mesh centroid
-            self.camera.fit(self.fit_center, self.fit_radius)
-        elif k == 'd':
-            # toggle deformed overlay
+            if self.fit_center is not None and self.fit_radius is not None:
+                self.camera.fit(self.fit_center, self.fit_radius)
+            return
+
+        # Toggle deformation overlay
+        if k.lower() == 'd':
             self.scene.toggle_deformed_visibility()
-        elif k == 'c':
-            # cycle through colormaps
-            self.shader.cycle_colormap()
-        elif k == 'escape':
-            # exit application
-            self.exit()
-    
+            return
+
+        # Cycle colormap
+        if k.lower() == 'c':
+            if self.shader:
+                self.shader.cycle_colormap()
+            return
     def on_mouse_drag(self, dx, dy, button):
         """
         Call on mouse drag.
