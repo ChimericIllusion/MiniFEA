@@ -122,7 +122,7 @@ class Camera:
         Return 4x4 view matrix as float32 ndarray.
         """
         return look_at(self.position, self.target, self.up)
-    def fit(self, center: np.ndarray, radius: float, scale: float = 2.0):
+    def fit(self, center: np.ndarray, radius: float, scale: float = 3.0):
         """
         Center on 'center' and back off so the entire
         bounding sphere of 'radius' is visible.
