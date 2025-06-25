@@ -64,6 +64,7 @@ def main():
     
     # Compute centroid
     centroid = nodes.mean(axis=0)
+    radius = np.linalg.norm(nodes-centroid, axis=1).max()
     # 2) Build MeshData and Scene (no GL calls yet)
     mesh_data = MeshData(nodes, elems, disp=disp, field=field)
     scene     = Scene(mesh_data)
@@ -102,7 +103,7 @@ def main():
 
     # ← SNAP TO ISO BEFORE RENDERER STARTS
     views.goTo("Iso")
-
+    camera.fit(centroid, radius)
     # 4) Projection manager
     proj_mgr = ProjectionManager()
 
@@ -113,6 +114,8 @@ def main():
         scene=scene,
         shader=None,           # placeholder; Renderer will create ShaderManager
         exit_callback=lambda: sys.exit(0),
+        fit_center=centroid,
+        fit_radius=radius
     )
 
     # 6) HUD overlay (stub FPS callback)

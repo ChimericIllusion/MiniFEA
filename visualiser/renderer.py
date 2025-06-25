@@ -129,7 +129,7 @@ class Renderer:
         glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH)
         glutInitWindowSize(self.width, self.height)
         glutCreateWindow(self.title)
-
+        glutFullScreen() 
         # 2) Now that the context exists, compile the shaders
         from visualiser.shader import ShaderManager
         self.shader = ShaderManager(

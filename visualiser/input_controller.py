@@ -14,7 +14,9 @@ class InputController:
                  scene,
                  shader,
                  exit_callback=None,
-                 key_map=None):
+                 key_map=None,
+                 fit_center=None,
+                 fit_radius=None):
         """
         Args:
             camera: Camera instance (orbit/pan/zoom/reset).
@@ -31,6 +33,8 @@ class InputController:
         self.exit        = exit_callback or (lambda: None)
         # default keys for view presets
         self.key_map     = key_map or {'1':'Top', '2':'Front', '3':'Side', '4':'Iso'}
+        self.fit_center = fit_center
+        self.fit_radius = fit_radius
 
     def on_key(self, key, modifiers=None):
         """
@@ -40,23 +44,20 @@ class InputController:
             key (str): the key identifier (e.g. '1','r','D','Escape').
             modifiers: optional set of modifier keys.
         """
-        k = key.lower()
+        k = key.decode('utf-8')
+        # handle Escape key
+        if k == '\x1b' or k.lower() == 'escape':
+            return self.exit()
         if k in self.key_map:
             # switch to named view
             name = self.key_map[k]
             self.views.goTo(name)
+            self.camera.fit(self.fit_center, self.fit_radius)
         elif k == 'r':
             # reset camera orientation
             self.camera.reset()
             # recenter on mesh centroid
-            nodes = self.scene.mesh_data._nodes3d
-            centroid = nodes.mean(axis=0)
-            self.camera.target = centroid
-            # recompute spherical coords so orbit still works
-            offset = self.camera.position - self.camera.target
-            self.camera._radius = np.linalg.norm(offset)
-            self.camera._theta  = np.arctan2(offset[2], offset[0])
-            self.camera._phi    = np.arccos(offset[1]/self.camera._radius)
+            self.camera.fit(self.fit_center, self.fit_radius)
         elif k == 'd':
             # toggle deformed overlay
             self.scene.toggle_deformed_visibility()

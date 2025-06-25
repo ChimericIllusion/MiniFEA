@@ -122,3 +122,24 @@ class Camera:
         Return 4x4 view matrix as float32 ndarray.
         """
         return look_at(self.position, self.target, self.up)
+    def fit(self, center: np.ndarray, radius: float, scale: float = 2.0):
+        """
+        Center on 'center' and back off so the entire
+        bounding sphere of 'radius' is visible.
+        """
+        # 1) update target & radius
+        self.target = center.copy()
+        self._radius = radius * scale
+
+        # 2) recompute position using existing angles _theta/_phi
+        self.position = self.target + np.array([
+            self._radius * np.sin(self._phi) * np.cos(self._theta),
+            self._radius * np.cos(self._phi),
+            self._radius * np.sin(self._phi) * np.sin(self._theta),
+        ], dtype=float)
+
+        # 3) now recompute spherical coords so orbit stays in sync
+        offset = self.position - self.target
+        self._radius = np.linalg.norm(offset)
+        self._theta  = np.arctan2(offset[2], offset[0])
+        self._phi    = np.arccos(offset[1] / self._radius)
