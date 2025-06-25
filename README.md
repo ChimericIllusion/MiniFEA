@@ -94,3 +94,103 @@ Embed a live Python REPL overlay for inspecting/modifying scene state, camera pa
 
 * Run a headless test harness that executes sample console commands to ensure no crashes.
 * Write coverage tests to verify every exposed API function responds as documented.
+
+## FEA Building-Block To-Do List
+
+---
+
+### 1. Core Abstractions
+
+* **`Element` Base Class**
+
+  * Define interface methods:
+
+    * `compute_local_stiffness(self) -> np.ndarray`
+    * `compute_local_force(self) -> np.ndarray`
+    * Properties for node connectivity, material, and geometry.
+* **`Material` Base Class**
+
+  * Encapsulate constitutive behavior (e.g. linear isotropic):
+
+    * `stiffness_tensor(self) -> np.ndarray`
+    * `stress(self, strain: np.ndarray) -> np.ndarray`
+
+---
+
+### 2. Mesh & DOF Management
+
+* **Node & Connectivity Data Structures**
+
+  * Simple `Node` class (coordinates, boundary flags).
+  * `Mesh` class holding lists of nodes and elements.
+* **`DofManager` Module**
+
+  * Enumerate global DOFs, apply boundary-condition masks.
+  * Map element-local DOFs ⇄ global indices.
+
+---
+
+### 3. Integration & Shape Functions
+
+* **1D/2D Integration Routines**
+
+  * Gaussian quadrature utilities (`points_weights(order)`).
+* **Shape-Function Module**
+
+  * Factory for element types (bar, truss, quad4):
+
+    * `N(ξ)`, `dN_dξ(ξ)` for each element.
+
+---
+
+### 4. Global Assembly
+
+* **`Assembler` Class**
+
+  * Accumulate local stiffness into a sparse global matrix (CSR).
+  * Assemble global force vector.
+* **Boundary-Condition Enforcer**
+
+  * Modify stiffness & force to apply Dirichlet/Neumann BCs cleanly.
+
+---
+
+### 5. Solver Interface
+
+* **`Solver` Abstract Base**
+
+  * Method `solve(K, f) -> u`
+* **Direct Solver Implementation**
+
+  * Wrapper around `scipy.sparse.linalg.spsolve`.
+* **Placeholder for Iterative Solvers**
+
+  * Stub for conjugate-gradient or external libraries.
+
+---
+
+### 6. Post-Processing & Results
+
+* **`Results` Container**
+
+  * Store displacements, strains, stresses per element.
+* **Basic Post-Processor**
+
+  * Compute element strains/stresses from `u`.
+  * Export to simple CSV or dict for later visualization.
+
+---
+
+### 7. Testing & Validation
+
+* **Pytest Harness**
+
+  * Unit tests for each shape-function and integration routine.
+  * Small analytical cases (e.g., single-bar under axial load).
+* **Continuous Integration**
+
+  * Automate tests on every push to ensure modular stability.
+
+---
+
+Each module above should live in its own file/package (`elements/`, `materials/`, `mesh/`, `assembly/`, `solvers/`, `postprocess/`, `tests/`) so you can iterate and extend independently.
