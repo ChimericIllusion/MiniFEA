@@ -53,295 +53,68 @@ Camera controls & presets
 • Add “home” and named-view presets so you can jump between front/top/side views.
 
 
+## Rendering Capabilities
 
+MiniFEA includes a built-in, real-time 3D viewer powered by OpenGL (via PyOpenGL and GLUT) for interactive visualization of undeformed and deformed meshes.
 
+### Core Components
 
+* **Renderer**
 
-
-
-
-# Current Renderer Concept
-**Comprehensive Outline: 3D FEA Renderer with On-Demand 2D Slices & View Presets**
-
----
-
-## 1. Objectives & Overview
-
-1. **Always-3D Core**
-
-   * Maintain a full 3D scene at all times (nodes, elements, displacements, scalar fields).
-   * Allow user to inspect “flat” 2D projections from any camera angle, plus classic orthographic and isometric presets.
-
-2. **Key Interactions**
-
-   * **Hotkeys** to jump to Top/Front/Side/Isometric views.
-   * **Mouse** for free‐form orbit, pan, zoom.
-   * **Field controls** for deformation scaling, reset, colormap cycling, clipping planes.
-
-3. **Modular Architecture**
-
-   * Decouple geometry, rendering, camera control, UI, and input handling.
-   * Facilitate incremental extension (e.g. adding beam thickness, volume rendering).
-
----
-
-## 2. Methodology for Construction
-
-### 2.1 Define Core Data Structures
-
-* **MeshData**
-
-  * Raw arrays of node coordinates, element connectivity, optional displacements & scalar fields.
-  * Normalize to consistent internal representation (e.g. all vectors of dimension 3, flat arrays reshaped).
+  * Manages the OpenGL context, main loop, and draw callbacks
+  * Clears buffers, computes MVP (Model-View-Projection) via `ProjectionManager` + `Camera`, and issues draw calls both for wireframe and debug spheres at nodes&#x20;
+  * Renders an overlaid HUD (view name, FPS, deformation state, colormap legend) via `HUDOverlay`&#x20;
 
 * **Scene**
 
-  * Upload geometry & per-element/per-vertex data into GPU buffers (VBO/EBO).
-  * Expose `updateDisplacements()` and `updateField()` to refresh GPU state.
+  * Wraps `MeshData`, creates and uploads VBO/EBO buffers for node positions and (optional) displacements
+  * Draws undeformed wireframe and, when toggled, an overlaid deformed mesh&#x20;
 
-### 2.2 Build Rendering Subsystem
+* **ShaderManager**
 
-1. **Shader Manager**
+  * Compiles/links GLSL vertex & fragment shaders from disk
+  * Manages 1D colormap textures (PNG LUTs) and uniform updates for MVP and colormap lookup
+  * Supports cycling through multiple colormaps at runtime&#x20;
 
-   * Prepare a minimal line‐drawing shader (vertex + fragment).
-   * Include a 1D colormap lookup texture for mapping scalar values to colors.
+* **ProjectionManager**
 
-2. **Projection & View Matrices**
+  * Generates 4×4 perspective or orthographic projection matrices based on camera parameters (FOV, ortho size, near/far) and viewport aspect ratio&#x20;
 
-   * Separate modules for computing perspective and orthographic projection matrices.
-   * Compute camera’s view matrix from position + orientation.
+* **Camera**
 
-3. **Render Loop**
+  * Arcball-style orbit around a target, with pan, zoom (dolly or ortho scale), and reset
+  * Provides a right-handed “look-at” view matrix and automatic “fit to bounding sphere” functionality&#x20;
 
-   * Clear buffers, bind shader, set uniform matrices & textures, draw scene, overlay HUD.
+* **ViewManager**
 
-### 2.3 Implement Camera & Views
+  * Registers named camera presets (e.g. Top, Front, Side, Iso) and applies them on key press
+  * Keeps configuration of position, target, up-vector, projection mode, and clipping planes&#x20;
 
-1. **Camera Class**
+* **InputController**
 
-   * Holds position vector, orientation quaternion or Euler angles, projection parameters, ortho size.
-   * Methods to get combined View-Projection matrix.
+  * Maps keyboard & mouse events to viewer actions:
 
-2. **View Preset Registry**
+    * **Keys**:
 
-   * Map names (“Top”, “Front”, “Side”, “Iso”) → camera configurations (pos, orient, mode, orthoSize).
-   * Allow dynamic addition of custom views.
+      * `1–4`: switch to preset views
+      * `r`: reset camera (and refit)
+      * `d`: toggle deformed overlay
+      * `c`: cycle colormap
+      * `Esc`: exit viewer
+    * **Mouse**:
 
-### 2.4 Wire Up User Input
+      * Left-drag: orbit
+      * Right-drag: pan
+      * Scroll wheel: zoom&#x20;
 
-1. **InputController**
+### Workflow
 
-   * Capture keyboard & mouse events from windowing system.
-   * Dispatch keypresses to:
-
-     * **ViewManager** for preset changes.
-     * **Camera** for arcball orbit, pan, zoom.
-     * **Renderer** for toggles (deform/reset, colormap next, clipping on/off).
-
-2. **Event Flow**
-
-   * Windowing callback → InputController → modify Camera or ViewManager → mark scene “dirty” → next frame uses new matrices.
-
-### 2.5 Develop HUD & Overlays
-
-* Render in a second pass using an orthographic projection:
-
-  * Current view name, FPS counter, active colormap legend, deformation scale.
-  * Simple text + colored rectangle legends.
+1. **Instantiate** your `VisualData` adapter with raw nodes, elements, displacements, scalar field, and BC flags.
+2. **Build** a `Scene` from the adapter and call `initialize_gl()` once the OpenGL context exists.
+3. **Create** a `Renderer`, supplying the `Scene`, shader paths, colormap list, `Camera`, `ProjectionManager`, `HUDOverlay`, and `InputController`.
+4. **Start** the viewer with `.start()`, entering an interactive loop for live mesh inspection, deformation toggling, and colormap exploration.
 
 ---
 
-## 3. Methodology for Use
 
-1. **Initialization**
 
-   * Load FEA results (mesh, displacements, scalars).
-   * Instantiate MeshData → Scene → Shader → Camera + ProjectionManager → ViewManager → InputController → HUD → Renderer.
-
-2. **Run Loop**
-
-   * Enter main loop: each tick clears, sets up projection, draws scene, draws HUD.
-
-3. **Interactive Workflow**
-
-   * **Mouse Drag**
-
-     * Left-button: rotate (“orbit”) about model center.
-     * Right-button or Shift+drag: pan in image plane.
-     * Scroll wheel: zoom in/out (adjust camera distance or ortho size).
-
-   * **Hotkeys**
-
-     * `1`/`2`/`3`/`4`: snap to Top/Front/Side/Isometric views.
-     * `D`/`R`: scale displacements up or reset to zero.
-     * `C`: cycle through available colormaps.
-     * `K`: toggle clipping plane on/off, use mouse to position slice.
-     * `Esc`: exit application.
-
----
-
-## 4. Architecture Components
-
-```
-┌───────────────────────────┐
-│         main()            │
-│ ────────────────────────  │
-│ 1. Load raw FEA data      │
-│ 2. Create MeshData        │
-│ 3. Build Scene & Shader   │
-│ 4. Instantiate Camera     │
-│ 5. Setup ViewManager      │
-│ 6. Setup InputController  │
-│ 7. Create HUDOverlay      │
-│ 8. Create Renderer        │
-│ 9. Start render loop      │
-└───────────────────────────┘
-             │
-             ▼
-┌───────────────────────────┐
-│         Renderer          │
-│ ────────────────────────  │
-│ on each tick:             │
-│   clear buffers           │
-│   camMat = Camera.getVP() │
-│   shader.use(camMat)      │
-│   Scene.draw(shader)      │
-│   HUD.draw()              │
-│   swap buffers            │
-└───────────────────────────┘
-             ▲
-             │
-    window events ▼
-┌───────────────────────────┐
-│     InputController       │
-│ ────────────────────────  │
-│ onKey(key):               │
-│   if key in [1–4]:        │
-│     ViewManager.goTo(key) │
-│   elif key == 'd':        │
-│     Scene.scaleDisp(…)    │
-│   …                        │
-│ onMouseDrag(dx, dy):      │
-│   Camera.orbit(dx, dy)    │
-│ onScroll(dz):             │
-│   Camera.zoom(dz)         │
-└───────────────────────────┘
-             ▲
-             │
-             └────────────── uses ────────────────┐
-                                                    ▼
-┌───────────────────────────┐        ┌─────────────────────────┐
-│        ViewManager        │        │        Camera           │
-│ ────────────────────────  │        │ ─────────────────────── │
-│ views = {name: config}    │◀───────┤ pos, orient, mode      │
-│ goTo(name): set cam state │        │ getVPMatrix()          │
-└───────────────────────────┘        └─────────────────────────┘
-                                                    ▲
-                                                    │
-                                      ┌─────────────┴─────────────┐
-                                      │      ProjectionManager    │
-                                      │ ───────────────────────   │
-                                      │ apply(camera, aspect)     │
-                                      └───────────────────────────┘
-
-┌───────────────────────────┐        ┌─────────────────────────┐
-│          Scene            │        │        Shader           │
-│ ────────────────────────  │        │ ─────────────────────── │
-│ upload data to GPU        │        │ compile GLSL programs   │
-│ draw(shader): bind VBO    │◀───────┤ use(matrix, textures)   │
-└───────────────────────────┘        └─────────────────────────┘
-
-┌───────────────────────────┐
-│        HUDOverlay         │
-│ ────────────────────────  │
-│ draw(): switch to ortho   │
-│ render text & legends     │
-└───────────────────────────┘
-```
-
----
-
-## 5. Pseudocode
-
-```
-function main():
-    raw = loadFEA(…)
-    data = MeshData(raw.nodes, raw.elems, raw.u, raw.field, raw.bc)
-    scene = Scene(data.nodes, data.elements, data.displacements, data.field)
-    shader = LineShader(loadColormap(data.colormap))
-    camera = Camera()
-    proj = ProjectionManager()
-    views = ViewManager()
-    views.add("Top",  pos=(0,0,+Z),   lookDown=–Z,   mode=ortho)
-    views.add("Front",pos=(0,+Y,0),   lookDown=–Y,   mode=ortho)
-    views.add("Side", pos=(+X,0,0),   lookDown=–X,   mode=ortho)
-    views.add("Iso",  pos=(1,1,1),    lookAt=(0,0,0), mode=persp)
-    input = InputController(camera, views, scene)
-    hud   = HUDOverlay()
-    renderer = Renderer(scene, shader, camera, proj, views, input, hud)
-    renderer.start()
-
-class Renderer:
-    on_tick():
-        clearColorAndDepth()
-        aspect = width / height
-        proj.apply(camera, aspect)
-        shader.bind()
-        scene.draw(shader)
-        hud.draw()
-        swapBuffers()
-
-class InputController:
-    on_key(key):
-        if key in [1,2,3,4]:
-            views.goTo(presetForKey(key))
-        elif key == 'd':
-            scene.scaleDisplacements(1.1)
-        elif key == 'r':
-            scene.resetDisplacements()
-        elif key == 'c':
-            shader.cycleColormap()
-    on_mouse_drag(dx, dy, button):
-        if button == LEFT:
-            camera.orbit(dx, dy)
-        elif button == RIGHT:
-            camera.pan(dx, dy)
-    on_scroll(delta):
-        camera.zoom(delta)
-
-class Scene:
-    init(nodes, elems, u, field):
-        createVBO(nodes)
-        createEBO(elems)
-        uploadAttribute("disp", u)
-        uploadAttribute("field", field)
-    draw(shader):
-        bindVBO()
-        bindEBO()
-        setVertexAttributes()
-        glDrawElements(LINES)
-
-class Camera:
-    orbit(dx, dy): update orientation
-    pan(dx, dy): update position laterally
-    zoom(d): adjust distance or ortho size
-    getVPMatrix(): return Projection * View
-
-class LineShader:
-    init(colormap):
-        compile vertex & frag shaders
-        upload colormap as 1D texture
-    use(mvp):
-        setUniform("uMVP", mvp)
-        bindTexture("colormap")
-
-class HUDOverlay:
-    draw():
-        switchToOrtho2D()
-        renderText("View: " + views.currentName)
-        renderColorLegend(shader.currentColormap)
-```
-
----
-
-This blueprint provides **all** the building blocks—data ingestion, GPU setup, camera control, user input, and render orchestration—entirely in conceptual terms and pseudocode. You can use it to guide an implementation in any graphics framework (raw OpenGL, VisPy, three.js, etc.).
