@@ -11,41 +11,7 @@ from visualiser.projection_manager import ProjectionManager
 from visualiser.input_controller import InputController
 from visualiser.hud_overlay import HUDOverlay
 from visualiser.renderer import Renderer
-
-def load_example_truss():
-    """
-    Returns a basic 3D pyramid wireframe:
-      - nodes: 5 nodes (square base + apex)
-      - elems: 8 bars (4 base edges + 4 sides)
-      - disp: zero displacements
-      - field: dummy scalar at each node
-      - bc_flags: empty for now
-    """
-    nodes = np.array([
-        [0.0, 0.0, 0.0],  # 0
-        [1.0, 0.0, 0.0],  # 1
-        [1.0, 0.0, 1.0],  # 2
-        [0.0, 0.0, 1.0],  # 3
-        [0.5, 1.0, 0.5],  # 4 
-    ], dtype=float)
-
-    elems = np.array([
-        # base square
-        [0, 1],
-        [1, 2],
-        [2, 3],
-        [3, 0],
-        # sides to apex
-        [0, 4],
-        [1, 4],
-        [2, 4],
-        [3, 4],
-    ], dtype=int)
-
-    disp = np.zeros_like(nodes)
-    field = np.linspace(0.0, 1.0, nodes.shape[0])
-    bc_flags = {}
-    return nodes, elems, disp, field, bc_flags
+from visualiser.testing.pyramid_example import pyramid_truss
 
 
 def main():
@@ -54,13 +20,13 @@ def main():
     SHADER_DIR = os.path.join(HERE, "visualiser", "shaders")
     vert_path = os.path.join(SHADER_DIR, "line.vert")
     frag_path = os.path.join(SHADER_DIR, "line.frag")
-    colormaps = [
+    colormaps = [   
         # add paths here if you have colormap textures
         # os.path.join(SHADER_DIR, "colormaps", "viridis.png"),
     ]
 
     # 1) Load FEA data arrays
-    nodes, elems, disp, field, bc_flags = load_example_truss()
+    nodes, elems, disp, field, bc_flags = pyramid_truss()
     
     # Compute centroid
     centroid = nodes.mean(axis=0)
