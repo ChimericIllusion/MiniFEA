@@ -3,6 +3,7 @@ input_controller.py
 
 Maps keyboard and mouse events to camera, view manager, scene, and shader actions.
 """
+import numpy as np
 class InputController:
     """
     Handles user input and dispatches to renderer components.
@@ -45,8 +46,17 @@ class InputController:
             name = self.key_map[k]
             self.views.goTo(name)
         elif k == 'r':
-            # reset camera
+            # reset camera orientation
             self.camera.reset()
+            # recenter on mesh centroid
+            nodes = self.scene.mesh_data._nodes3d
+            centroid = nodes.mean(axis=0)
+            self.camera.target = centroid
+            # recompute spherical coords so orbit still works
+            offset = self.camera.position - self.camera.target
+            self.camera._radius = np.linalg.norm(offset)
+            self.camera._theta  = np.arctan2(offset[2], offset[0])
+            self.camera._phi    = np.arccos(offset[1]/self.camera._radius)
         elif k == 'd':
             # toggle deformed overlay
             self.scene.toggle_deformed_visibility()
@@ -56,7 +66,7 @@ class InputController:
         elif k == 'escape':
             # exit application
             self.exit()
-
+    
     def on_mouse_drag(self, dx, dy, button):
         """
         Call on mouse drag.

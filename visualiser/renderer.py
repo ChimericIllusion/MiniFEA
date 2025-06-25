@@ -47,22 +47,60 @@ class Renderer:
         glViewport(0, 0, self.width, self.height)
 
     def _display(self):
+        # 0) Clear
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         aspect = self.width / self.height
 
-        # compute MVP = Projection * View
-        P = self.proj_mgr.get_proj_matrix(self.camera, aspect)
-        V = self.camera.get_view_matrix()
+        # 1) Compute matrices
+        P   = self.proj_mgr.get_proj_matrix(self.camera, aspect)
+        V   = self.camera.get_view_matrix()
         MVP = P @ V
 
-        # render scene
+        # 2) Draw wireframe via shader
         self.shader.use(MVP.astype(np.float32))
+        # ensure fixed-function matrices are identity so shader MVP is only source
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
         self.scene.draw(self.shader)
 
-        # render HUD
+        # 3) Draw debug spheres at nodes under the same P & V
+        glUseProgram(0)
+        # Projection
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadMatrixf(P.T)
+        # View
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        glLoadMatrixf(V.T)
+
+        from OpenGL.GLUT import glutSolidSphere
+        glDisable(GL_DEPTH_TEST)
+        glColor3f(1.0, 0.0, 0.0)
+        radius = 0.02
+        for v in self.scene.mesh_data._nodes3d:
+            glPushMatrix()
+            glTranslatef(v[0], v[1], v[2])
+            glutSolidSphere(radius, 12, 12)
+            glPopMatrix()
+        glEnable(GL_DEPTH_TEST)
+
+        # Restore matrices
+        glPopMatrix()                     # MODELVIEW
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()                     # PROJECTION
+        glMatrixMode(GL_MODELVIEW)
+
+        # 4) Re-bind shader & draw HUD
+        self.shader.use(MVP.astype(np.float32))
         self.hud.draw(self.width, self.height)
 
+        # 5) Swap
         glutSwapBuffers()
+
+
 
     def _on_keyboard(self, key, x, y):
         k = key.decode('utf-8')

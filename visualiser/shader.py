@@ -105,8 +105,8 @@ class ShaderManager:
             mvp_matrix (np.ndarray): 4x4 float32 MVP matrix.
         """
         glUseProgram(self.program)
-        # Upload MVP
-        glUniformMatrix4fv(self.unif_mvp, 1, GL_FALSE, mvp_matrix)
+        # Tell GL to transpose the row-major matrix into column-major for us:
+        glUniformMatrix4fv(self.unif_mvp, 1, GL_TRUE, mvp_matrix)
         # Bind colormap texture if available
         if self.tex_ids:
             glActiveTexture(GL_TEXTURE0)

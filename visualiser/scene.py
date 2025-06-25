@@ -8,6 +8,7 @@ and deformed meshes.
 """
 from OpenGL.GL import *
 import numpy as np
+from OpenGL.GLUT import glutSolidSphere
 
 class Scene:
     """
@@ -100,16 +101,17 @@ class Scene:
         """
         # Bind shader and any uniforms outside
         # Draw undeformed
+        # Bind nodes VBO
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_nodes)
         glEnableVertexAttribArray(shader.attrib_pos)
         glVertexAttribPointer(shader.attrib_pos, 3, GL_FLOAT, GL_FALSE, 0, None)
 
+        # Draw base wireframe
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo)
         glDrawElements(GL_LINES,
                        self.mesh_data.index_buffer.size,
                        GL_UNSIGNED_INT,
                        None)
-
         # Draw deformed overlay if toggled
         if self.deformed_visible and self.vbo_disp is not None:
             glBindBuffer(GL_ARRAY_BUFFER, self.vbo_disp)
@@ -126,3 +128,4 @@ class Scene:
         glDisableVertexAttribArray(shader.attrib_pos)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+
