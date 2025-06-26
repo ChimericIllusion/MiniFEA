@@ -1,15 +1,21 @@
 """
 hud_overlay.py
 
-Renders on-screen HUD elements: current view, FPS, deformation state, and colormap legend.
+Renders on-screen HUD elements: current view, FPS, deformation state, colormap legend,
+—and now also a fixed‐size 3-axis gizmo in the lower‐left corner.
 """
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLUT import glutBitmapCharacter, GLUT_BITMAP_HELVETICA_18
+import glm
+
+# **NEW IMPORT**
+from .Gizmo import Gizmo
 
 class HUDOverlay:
     """
-    Draws 2D HUD elements in an orthographic overlay.
+    Draws 2D HUD elements in an orthographic overlay,
+    plus a 3-axis orientation gizmo.
     """
     def __init__(self, view_manager, shader_manager, scene, fps_callback=None):
         """
@@ -19,10 +25,21 @@ class HUDOverlay:
             scene: Scene instance
             fps_callback: callable returning current FPS
         """
-        self.views = view_manager
-        self.shader = shader_manager
-        self.scene = scene
+        self.views        = view_manager
+        self.shader       = shader_manager
+        self.scene        = scene
         self.fps_callback = fps_callback or (lambda: 0)
+
+        # --- NEW: setup 3-axis gizmo ---
+        # Assumes your ViewManager holds a reference to the camera:
+        self.camera = self.views.camera  
+        self.gizmo = Gizmo()
+        self.gizmo.init(
+            arrowLength=0.1,   # world‐space length in NDC
+            arrowRadius=0.005  # thickness
+        )
+        # Projection for gizmo is identity → direct NDC
+        self._proj_ndc = glm.mat4(1.0)
 
     def _draw_text(self, x, y, text):
         glRasterPos2f(x, y)
@@ -30,23 +47,24 @@ class HUDOverlay:
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(ch))
 
     def draw(self, width, height):
-        # Setup orthographic projection for HUD
+        # --- 2D HUD setup ---
         glMatrixMode(GL_PROJECTION)
         glPushMatrix()
         glLoadIdentity()
         glOrtho(0, width, 0, height, -1, 1)
+
         glMatrixMode(GL_MODELVIEW)
         glPushMatrix()
         glLoadIdentity()
+
         glDisable(GL_DEPTH_TEST)
 
-        # Retrieve HUD data
+        # Text info
         current_view = self.views.current or 'Custom'
-        fps = self.fps_callback()
-        cmap_idx = self.shader.current if self.shader.tex_ids else -1
-        deform = 'On' if self.scene.deformed_visible else 'Off'
+        fps          = self.fps_callback()
+        cmap_idx     = self.shader.current if self.shader.tex_ids else -1
+        deform       = 'On' if self.scene.deformed_visible else 'Off'
 
-        # Text placement
         margin = 10
         line_h = 20
         lines = [
@@ -70,9 +88,21 @@ class HUDOverlay:
             glEnd()
             glBindTexture(GL_TEXTURE_1D, 0)
 
-        # Restore matrices & depth test
+        # --- NOW DRAW THE 3-AXIS GIZMO ---
+        # Keep gizmo on top
+        glDepthFunc(GL_LEQUAL)
+        glDepthMask(GL_FALSE)
+
+        # Camera orientation as a glm.quat
+        cam_rot = self.camera.orientation_quat()
+        self.gizmo.drawOverlay(cam_rot, self._proj_ndc)
+
+        # Restore depth‐write for any further draws
+        glDepthMask(GL_TRUE)
+
+        # --- restore 2D HUD state ---
         glEnable(GL_DEPTH_TEST)
-        glPopMatrix()
+        glPopMatrix()                     # MODELVIEW
         glMatrixMode(GL_PROJECTION)
-        glPopMatrix()
+        glPopMatrix()                     # PROJECTION
         glMatrixMode(GL_MODELVIEW)

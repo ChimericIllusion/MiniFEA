@@ -93,14 +93,12 @@ class Renderer:
         glPopMatrix()                     # PROJECTION
         glMatrixMode(GL_MODELVIEW)
 
-        # 4) Re-bind shader & draw HUD
+        # 4) Re-bind shader & draw HUD (which now also draws the 3-axis gizmo)
         self.shader.use(MVP.astype(np.float32))
         self.hud.draw(self.width, self.height)
 
         # 5) Swap
         glutSwapBuffers()
-
-
 
     def _on_keyboard(self, key, x, y):
         k = key.decode('utf-8')
